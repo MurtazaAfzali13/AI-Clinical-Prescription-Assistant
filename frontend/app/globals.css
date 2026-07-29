@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Source Serif 4", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background-color: theme("colors.paper");
+  color: theme("colors.ink");
+}
+
+/* subtle clinical grid texture on the app background, distinct from the paper look of the printed prescription itself */
+.app-shell-bg {
+  background-image: radial-gradient(circle at 1px 1px, rgba(23, 122, 153, 0.08) 1px, transparent 0);
+  background-size: 22px 22px;
+}

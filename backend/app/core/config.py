@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     llm_model_name: str = Field(default="openai/gpt-4o-mini")
     llm_temperature: float = Field(default=0.0)
     embedding_model: str = Field(default="openai/text-embedding-3-small")
+    stt_model_name: str = Field(
+        default="openai/whisper-1", description="Speech-to-text model, served via OpenRouter's audio/transcriptions endpoint"
+    )
 
     # --- Pinecone (RAG / drug interaction vector store) ---
     pinecone_api_key: str = Field(default="")

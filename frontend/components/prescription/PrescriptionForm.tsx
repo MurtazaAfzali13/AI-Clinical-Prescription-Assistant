@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceRecorderButton } from "@/components/prescription/VoiceRecorderButton";
 import type { PatientInfo, PrescriptionResponse } from "@/lib/types/prescription";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -81,8 +82,9 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
           New prescription note
         </CardTitle>
         <p className="text-xs text-ink/60">
-          Write the patient encounter in plain English. The Extractor agent will structure it, and the
-          Safety agent will check for drug interactions before it reaches print.
+          Write the patient encounter in plain English, or dictate it with the mic button. The
+          Extractor agent will structure it, and the Safety agent will check for drug interactions
+          before it reaches print.
         </p>
       </CardHeader>
       <CardContent>
@@ -122,7 +124,14 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="raw-text">Encounter note</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="raw-text">Encounter note</Label>
+              <VoiceRecorderButton
+                onTranscript={(text) =>
+                  setRawText((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text))
+                }
+              />
+            </div>
             <Textarea
               id="raw-text"
               value={rawText}

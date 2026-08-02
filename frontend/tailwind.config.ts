@@ -20,20 +20,38 @@ const config: Config = {
           100: "#e3f3f7",
           50: "#f5fafb",
         },
-        paper: "#fbfaf7",
-        ink: "#1c2b2f",
+        paper: "hsl(var(--background))",
+        ink: "hsl(var(--foreground))",
         warn: {
           amber: "#b8860b",
           red: "#b3261e",
         },
-        border: "hsl(200 20% 88%)",
+        border: "hsl(var(--border))",
         ring: "#177a99",
-        background: "#fbfaf7",
-        foreground: "#1c2b2f",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: "hsl(var(--card))",
+        "card-foreground": "hsl(var(--card-foreground))",
+        muted: "hsl(var(--muted))",
+        // Vitals-monitor dark palette for the analytics dashboard: near-black
+        // teal (like a dimmed instrument screen) with a single mint "pulse"
+        // accent that traces charts and sparklines, evoking an ECG readout
+        // rather than a generic dark SaaS dashboard.
+        vitals: {
+          bg: "#071a20",
+          surface: "#0e2830",
+          line: "#1c3a42",
+          pulse: "#35e0c0",
+          "pulse-dim": "#1f8a76",
+          warn: "#ff8a65",
+          ink: "#eaf6f4",
+          "ink-muted": "#7fa8a8",
+        },
       },
       fontFamily: {
         display: ["var(--font-display)"],
         body: ["var(--font-body)"],
+        mono: ["var(--font-mono)"],
       },
       borderRadius: {
         lg: "0.75rem",

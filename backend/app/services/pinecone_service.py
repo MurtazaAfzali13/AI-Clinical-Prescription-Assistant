@@ -1,8 +1,13 @@
 """Vector store wrapper for the drug-interaction knowledge base.
 
 Uses langchain-pinecone + OpenRouter's OpenAI-compatible embeddings
-endpoint. Isolated behind a small interface so it can be mocked in tests
-without real network access or credentials.
+endpoint. We build the Pinecone `Index` object ourselves (via the raw
+`pinecone` client, using the API key from our own Settings) instead of
+letting `PineconeVectorStore` resolve the key -- langchain-pinecone's
+`from_texts`/`from_documents`/index_name-only construction path only reads
+`PINECONE_API_KEY` from `os.environ`, which pydantic-settings does NOT
+populate just because it's in `.env`. Passing a ready `Index` object sidesteps
+that entirely.
 """
 from __future__ import annotations
 
@@ -10,6 +15,7 @@ from dataclasses import dataclass
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone as PineconeClient
 
 from app.core.config import Settings
 from app.core.exceptions import VectorStoreError
@@ -37,6 +43,15 @@ def get_embeddings(settings: Settings) -> OpenAIEmbeddings:
     )
 
 
+def build_vector_store(settings: Settings) -> PineconeVectorStore:
+    """Builds a PineconeVectorStore from an explicitly-constructed Index,
+    so the Pinecone API key always comes from our own Settings -- never
+    from an ambient environment variable."""
+    client = PineconeClient(api_key=settings.pinecone_api_key)
+    index = client.Index(settings.index_name)
+    return PineconeVectorStore(index=index, embedding=get_embeddings(settings))
+
+
 class PineconeService:
     """Query interface over the drug-interaction vector index."""
 
@@ -48,20 +63,26 @@ class PineconeService:
         if self._vector_store is not None:
             return self._vector_store
         try:
-            self._vector_store = PineconeVectorStore(
-                index_name=self._settings.index_name,
-                embedding=get_embeddings(self._settings),
-                pinecone_api_key=self._settings.pinecone_api_key,
-            )
+            self._vector_store = build_vector_store(self._settings)
             return self._vector_store
         except Exception as exc:  # noqa: BLE001
             raise VectorStoreError(f"Could not connect to Pinecone: {exc}") from exc
 
     def find_interactions(self, medication_name: str, top_k: int = 5) -> list[DrugKnowledgeMatch]:
-        """Return the closest known interaction records for a medication."""
+        """Return the closest known interaction records for a medication.
+
+        Filters by the `drug_name_lower` metadata field so that Pinecone's
+        semantic similarity search can't return a *different* drug's record
+        just because its seed sentence reads similarly (e.g. "Ibuprofen" and
+        "Acetaminophen" interaction sentences are worded almost identically).
+        """
         try:
             store = self._ensure_store()
-            results = store.similarity_search_with_score(medication_name, k=top_k)
+            results = store.similarity_search_with_score(
+                medication_name,
+                k=top_k,
+                filter={"drug_name_lower": medication_name.strip().lower()},
+            )
         except VectorStoreError:
             raise
         except Exception as exc:  # noqa: BLE001

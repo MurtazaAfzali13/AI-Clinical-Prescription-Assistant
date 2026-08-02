@@ -69,7 +69,7 @@ recording a mandatory clinical justification — logged to
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in OPENAI_API_KEY, PINECONE_API_KEY, SUPABASE_*, etc.
+cp .env.example .env   # fill in OPENROUTER_API_KEY, PINECONE_API_KEY, SUPABASE_*, etc.
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -80,8 +80,10 @@ Supabase clients are all mocked):
 pytest -v
 ```
 
-Seed the Pinecone drug-interaction index (requires real `PINECONE_API_KEY`
-and `OPENAI_API_KEY`):
+Seed the Pinecone drug-interaction index (requires a real `PINECONE_API_KEY`
+and `OPENROUTER_API_KEY`, and the index must already exist — create it in
+the Pinecone console first with a dimension matching `EMBEDDING_MODEL`,
+e.g. 1536 for `openai/text-embedding-3-small`):
 
 ```bash
 python -m scripts.ingest_drug_interactions

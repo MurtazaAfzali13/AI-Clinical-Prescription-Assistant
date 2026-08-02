@@ -2,6 +2,7 @@ import type {
   PrescriptionRequest,
   PrescriptionResponse,
 } from "@/lib/types/prescription";
+import type { DashboardStats } from "@/lib/types/analytics";
 
 interface OverrideRequest {
   trace_id: string;
@@ -11,6 +12,20 @@ interface OverrideRequest {
 interface OverrideResponse {
   trace_id: string;
   status: string;
+}
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface ChatApiRequest {
+  message: string;
+  history: ChatTurn[];
+}
+
+interface ChatApiResponse {
+  reply: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -51,4 +66,16 @@ export const prescriptionApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+};
+
+export const chatApi = {
+  sendMessage: (payload: ChatApiRequest) =>
+    request<ChatApiResponse>("/chat", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const analyticsApi = {
+  getDashboard: () => request<DashboardStats>("/analytics/dashboard"),
 };

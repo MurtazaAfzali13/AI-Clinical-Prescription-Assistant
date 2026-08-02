@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+    <main className="relative flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinic-900 font-display text-xl text-white">
           W

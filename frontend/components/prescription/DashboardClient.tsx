@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { FileText, LogOut } from "lucide-react";
+import { FileText, LogOut, MessageCircle, LineChart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PrescriptionForm } from "@/components/prescription/PrescriptionForm";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { PrescriptionResponse } from "@/lib/types/prescription";
 
@@ -53,9 +55,22 @@ export function DashboardClient({ doctorName, doctorEmail, isDemoMode }: Dashboa
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4" /> Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/analytics">
+                <LineChart className="h-4 w-4" /> Analytics
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/patients">
+                <MessageCircle className="h-4 w-4" /> Patient Records
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" /> Sign out
+            </Button>
+            <ThemeToggle />
+          </div>
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -5,16 +5,38 @@
 :root {
   --font-display: "Source Serif 4", ui-serif, Georgia, serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", monospace;
+
+  --background: 45 33% 98%;
+  --foreground: 195 24% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 195 24% 15%;
+  --border: 200 20% 88%;
+  --muted: 195 24% 15%;
+}
+
+.dark {
+  --background: 197 45% 8%;
+  --foreground: 165 35% 94%;
+  --card: 197 38% 12%;
+  --card-foreground: 165 35% 94%;
+  --border: 197 25% 22%;
+  --muted: 165 15% 65%;
 }
 
 html,
 body {
-  background-color: theme("colors.paper");
-  color: theme("colors.ink");
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 /* subtle clinical grid texture on the app background, distinct from the paper look of the printed prescription itself */
 .app-shell-bg {
   background-image: radial-gradient(circle at 1px 1px, rgba(23, 122, 153, 0.08) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.dark .app-shell-bg {
+  background-image: radial-gradient(circle at 1px 1px, rgba(53, 224, 192, 0.08) 1px, transparent 0);
   background-size: 22px 22px;
 }

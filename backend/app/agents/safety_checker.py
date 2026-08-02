@@ -27,12 +27,32 @@ def safety_node(state: GraphState, pinecone_service: PineconeService) -> GraphSt
         return {**state, "warnings": [], "is_safe": False}
 
     warnings: list[InteractionWarning] = []
-    med_names = [m.name for m in extraction.medications]
+    # Compare each newly prescribed drug against every OTHER drug the patient
+    # will be exposed to -- both the other freshly prescribed drugs and the
+    # patient's existing/home medications. Without including
+    # current_medications here, a drug the patient is "currently on" (not
+    # newly prescribed) would never be checked against, even though it's
+    # exactly the case that matters clinically.
+    new_med_names = [m.name for m in extraction.medications]
+    current_med_names = list(extraction.current_medications)
+    all_other_names_lower = {n.lower() for n in (*new_med_names, *current_med_names)}
 
     for medication in extraction.medications:
         matches = pinecone_service.find_interactions(medication.name)
         for match in matches:
-            overlapping = set(match.interacts_with) & {n.lower() for n in med_names}
+            # Pinecone's similarity search is semantic, not exact: querying
+            # "Ibuprofen" can also return the Acetaminophen/Amoxicillin
+            # records because their seed sentences are worded almost
+            # identically ("X interacts with warfarin: ..."). Without this
+            # check, we'd attach a *different* drug's explanation to this
+            # medication's warning. Only trust a match that's actually about
+            # the medication we queried.
+            if match.drug_name.strip().lower() != medication.name.strip().lower():
+                continue
+
+            # Exclude the medication itself from the comparison set.
+            comparison_set = all_other_names_lower - {medication.name.lower()}
+            overlapping = set(match.interacts_with) & comparison_set
             if not overlapping:
                 continue
             severity = Severity(match.severity) if match.severity in Severity.__members__.values() else Severity.LOW

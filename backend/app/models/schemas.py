@@ -41,6 +41,12 @@ class PrescriptionExtraction(BaseModel):
     patient: PatientInfo = Field(default_factory=PatientInfo)
     diagnosis: str
     medications: list[Medication] = Field(default_factory=list)
+    current_medications: list[str] = Field(
+        default_factory=list,
+        description="Medications the patient is already taking (not newly prescribed here), "
+        "e.g. mentioned as 'currently on X' or 'already takes X'. Used for interaction "
+        "checking against the newly prescribed medications.",
+    )
     advice: str | None = None
 
 
@@ -77,3 +83,47 @@ class PrintablePrescription(BaseModel):
     advice: str
     medications: list[Medication]
     doctor_signature_name: str
+
+
+class ChatTurn(BaseModel):
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+    history: list[ChatTurn] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+class DailyCount(BaseModel):
+    date: str  # ISO date, "YYYY-MM-DD"
+    count: int
+
+
+class DiagnosisBreakdown(BaseModel):
+    label: str
+    count: int
+
+
+class RecentPrescriptionSummary(BaseModel):
+    patient_name: str
+    diagnosis: str
+    created_at: str
+    status: str
+    is_safe: bool
+
+
+class DashboardStats(BaseModel):
+    """Aggregated stats for the doctor's analytics dashboard."""
+
+    today_patients: int = 0
+    today_prescriptions: int = 0
+    active_patients: int = 0
+    safety_warnings_today: int = 0
+    daily_series: list[DailyCount] = Field(default_factory=list)
+    top_diagnoses: list[DiagnosisBreakdown] = Field(default_factory=list)
+    recent_prescriptions: list[RecentPrescriptionSummary] = Field(default_factory=list)

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
+    # --- OpenRouter (chat LLM + embeddings; OpenAI-compatible API) ---
     openrouter_api_key: str = Field(default="")
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1")
     llm_model_name: str = Field(default="openai/gpt-4o-mini")

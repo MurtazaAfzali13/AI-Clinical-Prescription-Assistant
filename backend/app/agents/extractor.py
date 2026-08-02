@@ -23,8 +23,16 @@ strictly structured data.
 
 Rules:
 - Output must be in English only, even if the input contains other languages.
-- Extract every medication mentioned, with its dosage, frequency, and \
-duration if stated. If a field is not stated, omit it rather than guessing.
+- `medications` is ONLY for drugs the doctor is newly prescribing in this \
+encounter (e.g. "prescribe X", "give X", "start X"). Extract each with its \
+dosage, frequency, and duration if stated. If a field is not stated, omit \
+it rather than guessing.
+- `current_medications` is for drugs the patient is already taking that are \
+NOT being newly prescribed here -- e.g. mentioned as "currently on X", \
+"already takes X", "is on X therapy". List just the drug names. This is \
+critical: these existing medications must still be checked for interactions \
+against anything newly prescribed, so never drop them or merge them into \
+`medications`.
 - The `diagnosis` field is required; infer it conservatively from the note \
 if the doctor did not state it explicitly.
 - Do not invent medications, dosages, or advice that are not present in the \

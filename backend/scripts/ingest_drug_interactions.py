@@ -17,11 +17,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from langchain_core.documents import Document  # noqa: E402
-from langchain_pinecone import PineconeVectorStore  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.logging import configure_logging, get_logger  # noqa: E402
-from app.services.pinecone_service import get_embeddings  # noqa: E402
+from app.services.pinecone_service import build_vector_store  # noqa: E402
 
 configure_logging()
 logger = get_logger(__name__)
@@ -100,6 +99,7 @@ def _build_documents(records: list[dict]) -> list[Document]:
                 page_content=text,
                 metadata={
                     "drug_name": record["drug_name"],
+                    "drug_name_lower": record["drug_name"].strip().lower(),
                     "interacts_with": [d.lower() for d in record["interacts_with"]],
                     "severity": record["severity"],
                     "explanation": record["explanation"],
@@ -114,13 +114,10 @@ def main() -> None:
     settings.validate_for_ingestion()
 
     documents = _build_documents(SEED_INTERACTIONS)
+    ids = [record["id"] for record in SEED_INTERACTIONS]
 
-    PineconeVectorStore.from_documents(
-        documents=documents,
-        embedding=get_embeddings(settings),
-        index_name=settings.index_name,
-        pinecone_api_key=settings.pinecone_api_key,
-    )
+    vector_store = build_vector_store(settings)
+    vector_store.add_documents(documents=documents, ids=ids)
 
     logger.info("ingestion_complete", extra={"extra_fields": {"count": len(documents)}})
     print(f"Upserted {len(documents)} drug-interaction records into '{settings.index_name}'.")

@@ -99,6 +99,10 @@ class ChatResponse(BaseModel):
     reply: str
 
 
+class TranscriptionResponse(BaseModel):
+    text: str
+
+
 class DailyCount(BaseModel):
     date: str  # ISO date, "YYYY-MM-DD"
     count: int

@@ -40,6 +40,13 @@ class VectorStoreError(AppError):
     error_code = "vector_store_error"
 
 
+class TranscriptionError(AppError):
+    """Raised when the voice-to-text (Whisper) transcription request fails."""
+
+    status_code = 502
+    error_code = "transcription_failed"
+
+
 class ValidationFailedError(AppError):
     """Raised when structured prescription data fails business validation."""
 

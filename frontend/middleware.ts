@@ -35,10 +35,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/patients") ||
-    request.nextUrl.pathname.startsWith("/analytics");
+  const PROTECTED_PREFIXES = ["/dashboard", "/patients", "/analytics", "/medications", "/templates", "/settings"];
+  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
   if (isProtectedRoute && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
@@ -49,5 +47,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/patients/:path*", "/analytics/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/patients/:path*",
+    "/analytics/:path*",
+    "/medications/:path*",
+    "/templates/:path*",
+    "/settings/:path*",
+  ],
 };

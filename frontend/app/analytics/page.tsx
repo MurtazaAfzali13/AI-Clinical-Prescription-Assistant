@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/layout/AppShell";
+import { getDoctorSession } from "@/lib/auth/getDoctorSession";
 
 // recharts relies on ResizeObserver and other browser-only APIs; keep it
 // out of the server-rendered / prerendered tree entirely.
@@ -10,25 +10,12 @@ const AnalyticsDashboard = dynamic(
   { ssr: false }
 );
 
-const SUPABASE_CONFIGURED = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
 export default async function AnalyticsPage() {
-  let doctorName = "Dr. Demo";
+  const { doctorName, doctorEmail } = await getDoctorSession();
 
-  if (SUPABASE_CONFIGURED) {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      redirect("/login");
-    }
-
-    doctorName = (user.user_metadata?.full_name as string) ?? user.email ?? "Doctor";
-  }
-
-  return <AnalyticsDashboard doctorName={doctorName} />;
+  return (
+    <AppShell doctorName={doctorName} doctorEmail={doctorEmail} title="Dashboard" subtitle="Today's vitals" bleed>
+      <AnalyticsDashboard doctorName={doctorName} />
+    </AppShell>
+  );
 }

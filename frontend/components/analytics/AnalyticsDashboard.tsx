@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { PulseStat } from "@/components/analytics/PulseStat";
 import { VolumeTraceChart } from "@/components/analytics/VolumeTraceChart";
@@ -43,30 +42,17 @@ export function AnalyticsDashboard({ doctorName }: AnalyticsDashboardProps) {
   });
 
   return (
-    <div className="min-h-screen bg-vitals-bg px-6 py-10 text-vitals-ink">
+    <div className="min-h-full bg-vitals-bg px-6 py-8 text-vitals-ink">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-vitals-pulse opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-vitals-pulse" />
-              </span>
-              <p className="font-mono text-[11px] uppercase tracking-widest text-vitals-ink-muted">
-                Live &middot; {today}
-              </p>
-            </div>
-            <h1 className="mt-1 font-display text-2xl font-semibold text-vitals-ink">
-              {doctorName}&rsquo;s day
-            </h1>
-          </div>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-vitals-ink-muted hover:text-vitals-ink"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to prescriptions
-          </Link>
-        </header>
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-vitals-pulse opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-vitals-pulse" />
+          </span>
+          <p className="font-mono text-[11px] uppercase tracking-widest text-vitals-ink-muted">
+            Live &middot; {today} &middot; {doctorName}
+          </p>
+        </div>
 
         {error && (
           <div className="flex items-center gap-2 rounded-lg border border-vitals-warn/30 bg-vitals-warn/10 px-3 py-2 text-sm text-vitals-warn">

@@ -1,29 +1,18 @@
-import { redirect } from "next/navigation";
-
+import { AppShell } from "@/components/layout/AppShell";
 import { DashboardClient } from "@/components/prescription/DashboardClient";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-const SUPABASE_CONFIGURED = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { getDoctorSession } from "@/lib/auth/getDoctorSession";
 
 export default async function DashboardPage() {
-  let doctorName = "Dr. Demo";
-  let doctorEmail: string | null = null;
+  const { doctorName, doctorEmail, isDemoMode } = await getDoctorSession();
 
-  if (SUPABASE_CONFIGURED) {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      redirect("/login");
-    }
-
-    doctorName = (user.user_metadata?.full_name as string) ?? user.email ?? "Doctor";
-    doctorEmail = user.email ?? null;
-  }
-
-  return <DashboardClient doctorName={doctorName} doctorEmail={doctorEmail} isDemoMode={!SUPABASE_CONFIGURED} />;
+  return (
+    <AppShell
+      doctorName={doctorName}
+      doctorEmail={doctorEmail}
+      title="New Prescription"
+      subtitle={isDemoMode ? "Prescription desk · demo mode" : "Prescription desk"}
+    >
+      <DashboardClient doctorName={doctorName} />
+    </AppShell>
+  );
 }

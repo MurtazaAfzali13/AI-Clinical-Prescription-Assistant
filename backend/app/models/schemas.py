@@ -55,6 +55,18 @@ class PrescriptionRequest(BaseModel):
     patient: PatientInfo = Field(default_factory=PatientInfo)
 
 
+class ManualPrescriptionRequest(BaseModel):
+    """Direct, doctor-authored prescription that skips the Extractor agent
+    entirely -- the doctor types the diagnosis and medications themselves.
+    Still passes through the Safety Checker agent before printing."""
+
+    patient: PatientInfo = Field(default_factory=PatientInfo)
+    diagnosis: str = Field(..., min_length=1)
+    medications: list[Medication] = Field(..., min_length=1, description="At least one medication is required")
+    current_medications: list[str] = Field(default_factory=list)
+    advice: str | None = None
+
+
 class PrescriptionResponse(BaseModel):
     extraction: PrescriptionExtraction
     warnings: list[InteractionWarning] = Field(default_factory=list)
@@ -131,3 +143,14 @@ class DashboardStats(BaseModel):
     daily_series: list[DailyCount] = Field(default_factory=list)
     top_diagnoses: list[DiagnosisBreakdown] = Field(default_factory=list)
     recent_prescriptions: list[RecentPrescriptionSummary] = Field(default_factory=list)
+
+
+class ReferPatientRequest(BaseModel):
+    patient_record_no: str = Field(..., min_length=1)
+    to_doctor_email: str = Field(..., min_length=3)
+    reason: str | None = None
+
+
+class ReferPatientResponse(BaseModel):
+    success: bool
+    message: str

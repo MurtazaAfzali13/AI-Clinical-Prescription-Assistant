@@ -15,15 +15,18 @@ from fastapi.responses import StreamingResponse
 from langchain_openai import ChatOpenAI
 
 from app.agents.graph import build_prescription_graph
+from app.agents.safety_checker import safety_node
 from app.agents.state import create_initial_state
 from app.core.auth import CurrentDoctor, get_current_doctor
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ExtractionError
 from app.models.schemas import (
+    ManualPrescriptionRequest,
     OverrideRequest,
     OverrideResponse,
     PrescriptionRequest,
     PrescriptionResponse,
+    PrescriptionExtraction,
 )
 from app.services.pinecone_service import PineconeService
 from app.services.supabase_service import SupabaseService
@@ -76,6 +79,43 @@ def create_prescription(
 
     response = PrescriptionResponse(
         extraction=final_state["extraction"],
+        warnings=final_state.get("warnings", []),
+        is_safe=final_state.get("is_safe", True),
+        trace_id=trace_id,
+    )
+
+    supabase_service.save_prescription(
+        doctor_id=doctor.id, response=response, patient_record_no=payload.patient.record_no
+    )
+    return response
+
+
+@router.post("/manual", response_model=PrescriptionResponse)
+def create_manual_prescription(
+    payload: ManualPrescriptionRequest,
+    pinecone_service: PineconeService = Depends(get_pinecone_service),
+    supabase_service: SupabaseService = Depends(get_supabase_service),
+    doctor: CurrentDoctor = Depends(get_current_doctor),
+) -> PrescriptionResponse:
+    """Doctor-authored prescription: skips the Extractor agent entirely
+    (the doctor already typed structured diagnosis + medications) but
+    still runs the Safety Checker agent before it can be printed."""
+    trace_id = str(uuid.uuid4())
+
+    extraction = PrescriptionExtraction(
+        patient=payload.patient,
+        diagnosis=payload.diagnosis,
+        medications=payload.medications,
+        current_medications=payload.current_medications,
+        advice=payload.advice,
+    )
+    state = create_initial_state(raw_text="", patient=payload.patient, trace_id=trace_id)
+    state["extraction"] = extraction
+
+    final_state = safety_node(state, pinecone_service=pinecone_service)
+
+    response = PrescriptionResponse(
+        extraction=extraction,
         warnings=final_state.get("warnings", []),
         is_safe=final_state.get("is_safe", True),
         trace_id=trace_id,

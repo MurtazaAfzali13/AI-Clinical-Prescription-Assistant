@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import analytics, chat, health, prescription, transcription
+from app.api.routes import analytics, chat, health, patients, prescription, transcription
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import configure_logging, get_logger
@@ -42,3 +42,4 @@ app.include_router(prescription.router, prefix=settings.api_v1_prefix)
 app.include_router(chat.router, prefix=settings.api_v1_prefix)
 app.include_router(analytics.router, prefix=settings.api_v1_prefix)
 app.include_router(transcription.router, prefix=settings.api_v1_prefix)
+app.include_router(patients.router, prefix=settings.api_v1_prefix)

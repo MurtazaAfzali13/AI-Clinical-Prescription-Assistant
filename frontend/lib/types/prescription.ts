@@ -23,12 +23,21 @@ export interface PrescriptionExtraction {
   patient: PatientInfo;
   diagnosis: string;
   medications: Medication[];
+  current_medications?: string[];
   advice?: string | null;
 }
 
 export interface PrescriptionRequest {
   raw_text: string;
   patient: PatientInfo;
+}
+
+export interface ManualPrescriptionRequest {
+  patient: PatientInfo;
+  diagnosis: string;
+  medications: Medication[];
+  current_medications?: string[];
+  advice?: string | null;
 }
 
 export interface PrescriptionResponse {

@@ -1,8 +1,20 @@
 import type {
+  ManualPrescriptionRequest,
   PrescriptionRequest,
   PrescriptionResponse,
 } from "@/lib/types/prescription";
 import type { DashboardStats } from "@/lib/types/analytics";
+
+interface ReferPatientRequest {
+  patient_record_no: string;
+  to_doctor_email: string;
+  reason?: string;
+}
+
+interface ReferPatientResponse {
+  success: boolean;
+  message: string;
+}
 
 interface OverrideRequest {
   trace_id: string;
@@ -61,8 +73,21 @@ export const prescriptionApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  createManual: (payload: ManualPrescriptionRequest) =>
+    request<PrescriptionResponse>("/prescriptions/manual", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   override: (payload: OverrideRequest) =>
     request<OverrideResponse>("/prescriptions/override", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const patientsApi = {
+  refer: (payload: ReferPatientRequest) =>
+    request<ReferPatientResponse>("/patients/refer", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

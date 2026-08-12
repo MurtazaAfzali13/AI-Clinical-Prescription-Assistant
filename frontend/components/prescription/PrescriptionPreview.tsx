@@ -7,13 +7,16 @@ import { AlertOctagon, CheckCircle2, Printer, ShieldAlert, ShieldCheck } from "l
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { CDSSReviewPanel } from "@/components/prescription/CDSSReviewPanel";
 import { ApiError, prescriptionApi } from "@/lib/api/client";
 import { PrescriptionPDF } from "@/lib/pdf/PrescriptionPDF";
 import type { PrescriptionResponse, Severity } from "@/lib/types/prescription";
+import type { CDSSReview } from "@/lib/types/cdss";
 
 interface PrescriptionPreviewProps {
   result: PrescriptionResponse;
   doctorName: string;
+  cdssReview?: CDSSReview;
 }
 
 const SEVERITY_STYLES: Record<Severity, string> = {
@@ -24,7 +27,7 @@ const SEVERITY_STYLES: Record<Severity, string> = {
   critical: "bg-warn-red/15 text-warn-red border-warn-red/40",
 };
 
-export function PrescriptionPreview({ result, doctorName }: PrescriptionPreviewProps) {
+export function PrescriptionPreview({ result, doctorName, cdssReview }: PrescriptionPreviewProps) {
   const { extraction, warnings, is_safe: baseIsSafe, trace_id: traceId } = result;
 
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
@@ -82,7 +85,14 @@ export function PrescriptionPreview({ result, doctorName }: PrescriptionPreviewP
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle>Review before print</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Review before print
+          {cdssReview?.used_copilot_mode && (
+            <span className="rounded-full bg-clinic-800/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-clinic-800">
+              Copilot Mode
+            </span>
+          )}
+        </CardTitle>
         {isSafe ? (
           <span className="flex items-center gap-1 rounded-full border border-clinic-200 bg-clinic-50 px-2.5 py-1 text-xs font-medium text-clinic-800">
             {wasOverridden ? (
@@ -152,6 +162,8 @@ export function PrescriptionPreview({ result, doctorName }: PrescriptionPreviewP
             ))}
           </div>
         )}
+
+        {cdssReview && <CDSSReviewPanel review={cdssReview} />}
 
         {!baseIsSafe && !wasOverridden && (
           <div className="flex flex-col gap-2 rounded-md border border-warn-red/20 bg-warn-red/5 p-3">

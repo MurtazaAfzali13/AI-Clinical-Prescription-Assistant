@@ -20,11 +20,18 @@ _BLOCKING_SEVERITIES = {Severity.HIGH, Severity.CRITICAL}
 
 
 def safety_node(state: GraphState, pinecone_service: PineconeService) -> GraphState:
-    """LangGraph node: extraction -> warnings + is_safe."""
+    """LangGraph node: extraction -> warnings + is_safe.
+
+    Returns ONLY the keys it changes (not the full state) -- this node
+    now runs as one of several parallel branches in CDSS Copilot Mode, and
+    LangGraph raises `InvalidUpdateError` if multiple concurrent nodes in
+    the same superstep each try to write a full-state copy back to shared
+    keys like `raw_text`/`patient`/`trace_id`. Returning a delta is also
+    just the correct LangGraph pattern in general."""
     extraction = state.get("extraction")
     if extraction is None:
         # Nothing to check if extraction failed upstream.
-        return {**state, "warnings": [], "is_safe": False}
+        return {"warnings": [], "is_safe": False}
 
     warnings: list[InteractionWarning] = []
     # Compare each newly prescribed drug against every OTHER drug the patient
@@ -70,4 +77,4 @@ def safety_node(state: GraphState, pinecone_service: PineconeService) -> GraphSt
         "safety_check_complete",
         extra={"extra_fields": {"warning_count": len(warnings), "is_safe": is_safe}},
     )
-    return {**state, "warnings": warnings, "is_safe": is_safe}
+    return {"warnings": warnings, "is_safe": is_safe}

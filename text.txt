@@ -1,0 +1,7 @@
+uvicorn app.main:app --reload --port 8000
+
+
+python -m scripts.ingest_cdss_namespaces   برای اجرای برنامه ingestion است
+
+
+python -m app.agents.cdss_graph  برای چاپ گراف است 

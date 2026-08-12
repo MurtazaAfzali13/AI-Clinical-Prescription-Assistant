@@ -31,6 +31,11 @@ create table if not exists patients (
   phone text,
   allergies text[] not null default '{}',
   chronic_conditions text[] not null default '{}',
+  -- Clinical context used by the CDSS Lab/Context and Dose agents:
+  weight_kg numeric,
+  egfr numeric,               -- estimated glomerular filtration rate (renal function)
+  liver_panel_normal boolean, -- null = unknown/not on file, not "assumed normal"
+  labs_recorded_at timestamptz,
   created_at timestamptz not null default now()
 );
 

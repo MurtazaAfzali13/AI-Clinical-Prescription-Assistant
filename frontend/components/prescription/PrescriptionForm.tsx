@@ -1,22 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, PenLine, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, PenLine, Sparkles, Stethoscope } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceRecorderButton } from "@/components/prescription/VoiceRecorderButton";
 import { MedicationRowsEditor, emptyMedicationRows } from "@/components/prescription/MedicationRowsEditor";
-import { ApiError, prescriptionApi } from "@/lib/api/client";
+import { ApiError, cdssApi, prescriptionApi } from "@/lib/api/client";
 import type { Medication, PatientInfo, PrescriptionResponse } from "@/lib/types/prescription";
+import type { CDSSPrescriptionResponse, CDSSReview } from "@/lib/types/cdss";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 interface PrescriptionFormProps {
-  onResult: (result: PrescriptionResponse, patient: PatientInfo) => void;
+  onResult: (result: PrescriptionResponse, patient: PatientInfo, cdssReview?: CDSSReview) => void;
 }
 
 interface StatusEvent {
@@ -24,15 +26,28 @@ interface StatusEvent {
   label: string;
 }
 
-const AGENT_STAGES = [
-  { key: "extractor", label: "Extractor agent" },
-  { key: "safety_checker", label: "Safety agent" },
-];
-
 type Mode = "ai" | "manual";
+
+/** Adapts the richer CDSS payload into the original PrescriptionResponse
+ * shape so the existing preview/override/print flow keeps working
+ * unchanged -- the full CDSSReview is passed through separately for the
+ * additional Copilot Mode panels. */
+function cdssResponseToLegacy(response: CDSSPrescriptionResponse): PrescriptionResponse {
+  return {
+    extraction: response.extraction!,
+    warnings: response.review.safety_warnings.map((w) => ({
+      medications: w.medications,
+      severity: w.severity,
+      explanation: w.explanation,
+    })),
+    is_safe: response.review.is_safe,
+    trace_id: response.trace_id,
+  };
+}
 
 export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
   const [mode, setMode] = useState<Mode>("ai");
+  const [copilotMode, setCopilotMode] = useState(false);
   const [patient, setPatient] = useState<PatientInfo>({ name: "", age: undefined, record_no: "" });
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -54,8 +69,11 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
 
     eventSourceRef.current?.close();
 
+    const endpoint = copilotMode ? "/cdss/prescriptions/stream" : "/prescriptions/stream";
     const params = new URLSearchParams({ raw_text: rawText });
-    const source = new EventSource(`${API_BASE_URL}/prescriptions/stream?${params.toString()}`);
+    if (copilotMode) params.set("use_copilot_mode", "true");
+
+    const source = new EventSource(`${API_BASE_URL}${endpoint}?${params.toString()}`);
     eventSourceRef.current = source;
 
     source.onmessage = (event) => {
@@ -64,11 +82,17 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
       if (data.type === "status") {
         setStatusEvents((prev) => [...prev, { stage: data.stage, label: data.label }]);
       } else if (data.type === "result") {
-        const result = data.payload as PrescriptionResponse;
-        // Overlay the patient fields the doctor typed in, since the stream
-        // endpoint doesn't take structured patient input.
-        result.extraction.patient = { ...result.extraction.patient, ...patient };
-        onResult(result, patient);
+        if (copilotMode) {
+          const cdssResult = data.payload as CDSSPrescriptionResponse;
+          cdssResult.extraction!.patient = { ...cdssResult.extraction!.patient, ...patient };
+          onResult(cdssResponseToLegacy(cdssResult), patient, cdssResult.review);
+        } else {
+          const result = data.payload as PrescriptionResponse;
+          // Overlay the patient fields the doctor typed in, since the stream
+          // endpoint doesn't take structured patient input.
+          result.extraction.patient = { ...result.extraction.patient, ...patient };
+          onResult(result, patient);
+        }
         source.close();
         setIsRunning(false);
       } else if (data.type === "error") {
@@ -97,12 +121,22 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
 
     setIsRunning(true);
     try {
-      const result = await prescriptionApi.createManual({
-        patient,
-        diagnosis,
-        medications: filledMedications,
-      });
-      onResult(result, patient);
+      if (copilotMode) {
+        const cdssResult = await cdssApi.createManual({
+          patient,
+          diagnosis,
+          medications: filledMedications,
+          use_copilot_mode: true,
+        });
+        onResult(cdssResponseToLegacy(cdssResult), patient, cdssResult.review);
+      } else {
+        const result = await prescriptionApi.createManual({
+          patient,
+          diagnosis,
+          medications: filledMedications,
+        });
+        onResult(result, patient);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -148,6 +182,27 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
             ? "Write the patient encounter in plain English, or dictate it with the mic button. The Extractor agent will structure it, and the Safety agent will check for drug interactions before it reaches print."
             : "Enter the diagnosis and medications yourself -- the Extractor agent is skipped. The Safety agent still checks for drug interactions before printing."}
         </p>
+
+        <div className="mt-1 flex items-center justify-between rounded-md border border-clinic-100 bg-clinic-50 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 text-clinic-700" />
+            <div>
+              <Label htmlFor="copilot-mode" className="text-xs font-medium text-clinic-800">
+                Copilot Mode
+              </Label>
+              <p className="text-[11px] text-clinic-700/70">
+                {copilotMode
+                  ? mode === "ai"
+                    ? "Full workup: Supervisor routes to Lab, Dose, Contraindication, and Guideline agents as needed."
+                    : "Same Supervisor routing as AI dictation -- applies to your manually-entered diagnosis and medications too."
+                  : mode === "ai"
+                    ? "Fast mode: Extractor + Safety agent only (lower cost, lower latency)."
+                    : "Fast mode: Safety agent only."}
+              </p>
+            </div>
+          </div>
+          <Switch id="copilot-mode" checked={copilotMode} onCheckedChange={setCopilotMode} />
+        </div>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={mode === "ai" ? handleAiSubmit : handleManualSubmit}>
@@ -207,23 +262,16 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
 
               {statusEvents.length > 0 && (
                 <div className="flex flex-col gap-1.5 rounded-md border border-clinic-100 bg-clinic-50 p-3">
-                  {AGENT_STAGES.map((stage) => {
-                    const stageEvent = statusEvents.find((e) => e.stage === stage.key);
-                    const isDone =
-                      statusEvents.findIndex((e) => e.stage === stage.key) <
-                      statusEvents.length - (isRunning ? 1 : 0);
+                  {statusEvents.map((event, i) => {
+                    const isLast = i === statusEvents.length - 1;
                     return (
-                      <div key={stage.key} className="flex items-center gap-2 text-xs text-clinic-800">
-                        {stageEvent ? (
-                          isDone || !isRunning ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-clinic-600" />
-                          ) : (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-clinic-600" />
-                          )
+                      <div key={i} className="flex items-center gap-2 text-xs text-clinic-800">
+                        {isLast && isRunning ? (
+                          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-clinic-600" />
                         ) : (
-                          <span className="h-3.5 w-3.5 rounded-full border border-clinic-200" />
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-clinic-600" />
                         )}
-                        <span>{stageEvent?.label ?? `${stage.label} waiting...`}</span>
+                        <span>{event.label}</span>
                       </div>
                     );
                   })}
@@ -263,7 +311,9 @@ export function PrescriptionForm({ onResult }: PrescriptionFormProps) {
                 <Loader2 className="h-4 w-4 animate-spin" /> {mode === "ai" ? "Analyzing..." : "Checking safety..."}
               </>
             ) : mode === "ai" ? (
-              "Run Extractor + Safety Check"
+              copilotMode ? "Run Copilot Workup" : "Run Extractor + Safety Check"
+            ) : copilotMode ? (
+              "Run Copilot Workup"
             ) : (
               "Run Safety Check"
             )}

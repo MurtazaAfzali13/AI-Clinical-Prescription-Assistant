@@ -4,6 +4,7 @@ import type {
   PrescriptionResponse,
 } from "@/lib/types/prescription";
 import type { DashboardStats } from "@/lib/types/analytics";
+import type { CDSSPrescriptionResponse } from "@/lib/types/cdss";
 
 interface ReferPatientRequest {
   patient_record_no: string;
@@ -88,6 +89,17 @@ export const prescriptionApi = {
 export const patientsApi = {
   refer: (payload: ReferPatientRequest) =>
     request<ReferPatientResponse>("/patients/refer", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const cdssApi = {
+  // Manual entry, with the SAME Supervisor routing as AI dictation when
+  // copilotMode is true -- fixes the gap where a manually-typed
+  // prescription never reached the Supervisor at all.
+  createManual: (payload: ManualPrescriptionRequest & { use_copilot_mode: boolean }) =>
+    request<CDSSPrescriptionResponse>("/cdss/prescriptions/manual", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

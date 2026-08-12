@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 
 import { PrescriptionForm } from "@/components/prescription/PrescriptionForm";
 import type { PrescriptionResponse } from "@/lib/types/prescription";
+import type { CDSSReview } from "@/lib/types/cdss";
 
 // @react-pdf/renderer touches browser-only APIs; keep it out of the
 // server-rendered / prerendered tree entirely.
@@ -19,12 +20,18 @@ interface DashboardClientProps {
 
 export function DashboardClient({ doctorName }: DashboardClientProps) {
   const [result, setResult] = useState<PrescriptionResponse | null>(null);
+  const [cdssReview, setCdssReview] = useState<CDSSReview | undefined>(undefined);
 
   return (
     <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
-      <PrescriptionForm onResult={(res) => setResult(res)} />
+      <PrescriptionForm
+        onResult={(res, _patient, review) => {
+          setResult(res);
+          setCdssReview(review);
+        }}
+      />
       {result ? (
-        <PrescriptionPreview result={result} doctorName={doctorName} />
+        <PrescriptionPreview result={result} doctorName={doctorName} cdssReview={cdssReview} />
       ) : (
         <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border text-sm text-ink/50">
           Run an encounter note to see the structured prescription here.

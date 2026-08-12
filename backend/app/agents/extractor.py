@@ -63,10 +63,10 @@ def extractor_node(state: GraphState, llm: BaseChatModel) -> GraphState:
         extraction: PrescriptionExtraction = chain.invoke({"raw_text": raw_text})
     except Exception as exc:  # noqa: BLE001 - normalise all LLM/parse errors
         logger.error("extraction_failed", extra={"extra_fields": {"error": str(exc)}})
-        return {**state, "extraction": None, "extraction_error": str(exc)}
+        return {"extraction": None, "extraction_error": str(exc)}
 
     # Preserve any patient info already supplied by the frontend form.
     if state.get("patient") and state["patient"].name:
         extraction.patient = state["patient"]
 
-    return {**state, "extraction": extraction, "extraction_error": None}
+    return {"extraction": extraction, "extraction_error": None}

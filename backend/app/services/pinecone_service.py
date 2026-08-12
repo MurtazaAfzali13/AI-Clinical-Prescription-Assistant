@@ -43,21 +43,34 @@ def get_embeddings(settings: Settings) -> OpenAIEmbeddings:
     )
 
 
-def build_vector_store(settings: Settings) -> PineconeVectorStore:
+def build_vector_store(settings: Settings, namespace: str | None = None) -> PineconeVectorStore:
     """Builds a PineconeVectorStore from an explicitly-constructed Index,
     so the Pinecone API key always comes from our own Settings -- never
-    from an ambient environment variable."""
+    from an ambient environment variable. `namespace=None` uses Pinecone's
+    default namespace (where the drug-interaction seed data lives)."""
     client = PineconeClient(api_key=settings.pinecone_api_key)
     index = client.Index(settings.index_name)
-    return PineconeVectorStore(index=index, embedding=get_embeddings(settings))
+    return PineconeVectorStore(index=index, embedding=get_embeddings(settings), namespace=namespace)
 
 
 class PineconeService:
-    """Query interface over the drug-interaction vector index."""
+    """Query interface over the Pinecone index. `find_interactions` keeps
+    using the default namespace (drug-drug interactions, unchanged from
+    before namespaces existed); `query_namespace` gives the CDSS
+    specialist agents (Contraindication, Guideline, Alternative Therapy)
+    access to their own isolated namespaces, so a semantically-similar
+    contraindication record can never leak into a guideline lookup or
+    vice versa."""
 
-    def __init__(self, settings: Settings, vector_store: PineconeVectorStore | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        vector_store: PineconeVectorStore | None = None,
+        namespace_stores: dict[str, PineconeVectorStore] | None = None,
+    ) -> None:
         self._settings = settings
         self._vector_store = vector_store
+        self._namespace_stores: dict[str, PineconeVectorStore] = dict(namespace_stores or {})
 
     def _ensure_store(self) -> PineconeVectorStore:
         if self._vector_store is not None:
@@ -67,6 +80,14 @@ class PineconeService:
             return self._vector_store
         except Exception as exc:  # noqa: BLE001
             raise VectorStoreError(f"Could not connect to Pinecone: {exc}") from exc
+
+    def _ensure_namespace_store(self, namespace: str) -> PineconeVectorStore:
+        if namespace not in self._namespace_stores:
+            try:
+                self._namespace_stores[namespace] = build_vector_store(self._settings, namespace=namespace)
+            except Exception as exc:  # noqa: BLE001
+                raise VectorStoreError(f"Could not connect to Pinecone namespace '{namespace}': {exc}") from exc
+        return self._namespace_stores[namespace]
 
     def find_interactions(self, medication_name: str, top_k: int = 5) -> list[DrugKnowledgeMatch]:
         """Return the closest known interaction records for a medication.
@@ -101,3 +122,24 @@ class PineconeService:
                 )
             )
         return matches
+
+    def query_namespace(
+        self, query_text: str, namespace: str, top_k: int = 5, filter: dict | None = None
+    ) -> list[dict]:
+        """Generic namespace-scoped semantic search, returning plain dicts
+        (`content`, `metadata`, `score`) since different namespaces
+        (contraindications, clinical-guidelines) have different metadata
+        shapes -- unlike `find_interactions`, this isn't specific to the
+        drug-interaction schema."""
+        try:
+            store = self._ensure_namespace_store(namespace)
+            results = store.similarity_search_with_score(query_text, k=top_k, filter=filter)
+        except VectorStoreError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise VectorStoreError(f"Pinecone namespace '{namespace}' query failed: {exc}") from exc
+
+        return [
+            {"content": doc.page_content, "metadata": doc.metadata or {}, "score": score}
+            for doc, score in results
+        ]

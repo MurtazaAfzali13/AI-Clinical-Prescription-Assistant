@@ -172,6 +172,35 @@ class SupabaseService:
             logger.error("find_doctor_id_failed", extra={"extra_fields": {"error": str(exc)}})
             return None
 
+    def get_lab_context(self, record_no: str | None, national_id: str | None = None) -> dict | None:
+        """Fetches clinical context (weight, age, eGFR, liver panel,
+        chronic conditions, allergies) for the CDSS Lab/Context agent.
+
+        Returns a plain dict (not a Pydantic model) so this stays a thin
+        data-access layer -- the agent node is responsible for mapping it
+        into `LabContext`. Returns None if not configured or no matching
+        patient is found (never fabricates values)."""
+        client = self._ensure_client()
+        if client is None:
+            return None
+        if not record_no and not national_id:
+            return None
+
+        try:
+            lookup_value = record_no or national_id
+            result = (
+                client.table("patients")
+                .select("full_name,age,weight_kg,egfr,liver_panel_normal,labs_recorded_at,chronic_conditions,allergies")
+                .or_(f"record_no.eq.{lookup_value},national_id.eq.{lookup_value}")
+                .limit(1)
+                .execute()
+            )
+            rows = result.data or []
+            return rows[0] if rows else None
+        except Exception as exc:  # noqa: BLE001
+            logger.error("get_lab_context_failed", extra={"extra_fields": {"error": str(exc)}})
+            return None
+
     def refer_patient(
         self, from_doctor_id: str, to_doctor_id: str, patient_id: str, reason: str | None = None
     ) -> str:
